@@ -11,17 +11,13 @@ const verifyTelegram = (req, res, next) => {
     const { initData, isTelegram } = req.body;
     const APP_MODE = process.env.APP_MODE || 'production';
 
-    // 1. If strict production mode, block any non-Telegram request
-    if (APP_MODE === 'production' && !isTelegram) {
-        return res.status(403).json({ message: 'Production mode requires Telegram Mini App.' });
-    }
-
-    // 2. Handle Development Mode - Browser Login (Mock User)
-    if (APP_MODE === 'development' && !isTelegram) {
+    // 1. Handle Non-Telegram / Web Browser Login (Allow in both Dev and Prod as fallback)
+    if (!isTelegram) {
         req.telegramUser = {
-            id: 'dev_user',
-            username: 'DevUser',
-            first_name: 'Development'
+            id: 'web_guest_' + Math.random().toString(36).substring(2, 9),
+            username: 'WebGuest',
+            first_name: 'Web',
+            last_name: 'User'
         };
         return next();
     }
