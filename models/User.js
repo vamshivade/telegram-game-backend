@@ -7,10 +7,24 @@ const UserSchema = new mongoose.Schema({
         unique: true
     },
     username: {
-        type: String
+        type: String,
+        default: ''
     },
     firstName: {
-        type: String
+        type: String,
+        default: ''
+    },
+    lastName: {
+        type: String,
+        default: ''
+    },
+    photoUrl: {
+        type: String,
+        default: ''
+    },
+    languageCode: {
+        type: String,
+        default: ''
     },
     balance: {
         type: Number,

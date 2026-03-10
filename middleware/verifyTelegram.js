@@ -40,7 +40,11 @@ const verifyTelegram = (req, res, next) => {
         console.warn('TELEGRAM_BOT_TOKEN not set. Bypassing validation in development mode.');
         try {
             const urlParams = new URLSearchParams(initData);
-            req.telegramUser = JSON.parse(decodeURIComponent(urlParams.get('user')));
+            const userStr = urlParams.get('user');
+            if (!userStr) {
+                return res.status(400).json({ message: 'No user data in initData' });
+            }
+            req.telegramUser = JSON.parse(userStr);
             return next();
         } catch (e) {
             return res.status(400).json({ message: 'Invalid user data in initData' });
@@ -48,15 +52,30 @@ const verifyTelegram = (req, res, next) => {
     }
 
     // Strict HMAC Validation
+    // IMPORTANT: Build dataCheckString from the RAW initData string (not URLSearchParams-decoded)
+    // because Telegram signs the raw key=value pairs, and URLSearchParams auto-decodes values.
     try {
-        const urlParams = new URLSearchParams(initData);
-        const hash = urlParams.get('hash');
-        urlParams.delete('hash');
+        const pairs = initData.split('&');
+        let hash = null;
+        const filteredPairs = [];
 
-        const dataCheckString = Array.from(urlParams.entries())
-            .map(([key, value]) => `${key}=${value}`)
-            .sort()
-            .join('\n');
+        for (const pair of pairs) {
+            const eqIdx = pair.indexOf('=');
+            const key = pair.substring(0, eqIdx);
+            const value = pair.substring(eqIdx + 1);
+            if (key === 'hash') {
+                hash = value;
+            } else {
+                filteredPairs.push(`${key}=${value}`);
+            }
+        }
+
+        if (!hash) {
+            return res.status(400).json({ message: 'Missing hash in initData' });
+        }
+
+        // Sort alphabetically and join with newline — as per Telegram spec
+        const dataCheckString = filteredPairs.sort().join('\n');
 
         const secretKey = crypto.createHmac('sha256', 'WebAppData')
             .update(process.env.TELEGRAM_BOT_TOKEN)
@@ -67,10 +86,16 @@ const verifyTelegram = (req, res, next) => {
             .digest('hex');
 
         if (hmac === hash) {
+            // Use URLSearchParams to properly decode and extract the user object
+            const urlParams = new URLSearchParams(initData);
             const userStr = urlParams.get('user');
+            if (!userStr) {
+                return res.status(400).json({ message: 'No user data in initData' });
+            }
             req.telegramUser = JSON.parse(userStr);
             next();
         } else {
+            console.error('HMAC mismatch. Expected:', hmac, 'Got:', hash);
             res.status(403).json({ message: 'Invalid Telegram signature' });
         }
     } catch (err) {
