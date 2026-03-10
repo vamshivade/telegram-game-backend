@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getProfile, claimDailyBonus } = require('../controllers/userController');
+const { getProfile, claimDailyBonus, claimAdReward } = require('../controllers/userController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // @route   GET api/user/profile
@@ -10,5 +10,9 @@ router.get('/profile', authMiddleware, getProfile);
 // @route   POST api/user/claim-bonus
 // @desc    Claim daily login bonus
 router.post('/claim-bonus', authMiddleware, claimDailyBonus);
+
+// @route   POST api/user/ad-reward
+// @desc    Credit coins after user watches a Monetag ad
+router.post('/ad-reward', authMiddleware, claimAdReward);
 
 module.exports = router;

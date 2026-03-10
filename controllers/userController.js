@@ -47,7 +47,37 @@ const claimDailyBonus = async (req, res) => {
     }
 };
 
+/**
+ * POST /user/ad-reward
+ * Credits a small coin reward after the user watches a Monetag ad.
+ * Amount is capped server-side to prevent abuse.
+ */
+const claimAdReward = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const requestedAmount = parseInt(req.body.amount, 10) || 50;
+        const rewardAmount = Math.min(Math.max(requestedAmount, 1), 200); // 1–200 coins
+
+        user.balance += rewardAmount;
+        await user.save();
+
+        console.log(`[AdReward] User ${user.telegramId} earned ${rewardAmount} coins`);
+
+        res.json({
+            message: `Ad reward claimed! +${rewardAmount} coins.`,
+            balance: user.balance,
+            earned: rewardAmount
+        });
+    } catch (err) {
+        console.error('Ad reward error:', err.message);
+        res.status(500).send('Server error');
+    }
+};
+
 module.exports = {
     getProfile,
-    claimDailyBonus
+    claimDailyBonus,
+    claimAdReward
 };
