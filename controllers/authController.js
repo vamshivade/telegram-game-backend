@@ -19,26 +19,31 @@ const telegramLogin = async (req, res) => {
 
         const telegramId = id.toString();
 
-        // Upsert: find existing user or create a new one, always updating Telegram fields
-        let user = await User.findOneAndUpdate(
-            { telegramId },
-            {
-                $set: {
-                    username: username || '',
-                    firstName: first_name || '',
-                    lastName: last_name || '',
-                    photoUrl: photo_url || '',
-                    languageCode: language_code || '',
-                },
-                $setOnInsert: {
-                    telegramId,
-                    balance: 1000, // Default balance only on first create
-                }
-            },
-            { new: true, upsert: true, runValidators: true }
-        );
+        let user = await User.findOne({ telegramId });
 
-        console.log(`[Auth] User ${telegramId} (${username || first_name}) logged in. DB ID: ${user._id}`);
+        if (!user) {
+            // Create a brand new user explicitly
+            user = new User({
+                telegramId,
+                username: username || '',
+                firstName: first_name || '',
+                lastName: last_name || '',
+                photoUrl: photo_url || '',
+                languageCode: language_code || '',
+                balance: 1000 // default
+            });
+            await user.save();
+            console.log(`[Auth] New User created: ${telegramId} (${username || first_name}). DB ID: ${user._id}`);
+        } else {
+            // Update existing user fields
+            user.username = username || user.username;
+            user.firstName = first_name || user.firstName;
+            user.lastName = last_name || user.lastName;
+            user.photoUrl = photo_url || user.photoUrl;
+            user.languageCode = language_code || user.languageCode;
+            await user.save();
+            console.log(`[Auth] Existing User logged in: ${telegramId} (${username || first_name}). DB ID: ${user._id}`);
+        }
 
         const token = jwt.sign(
             { userId: user._id },
