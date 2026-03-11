@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const DailyUserReport = require('../models/DailyUserReport');
 
 const telegramLogin = async (req, res) => {
     try {
@@ -43,6 +44,18 @@ const telegramLogin = async (req, res) => {
             { userId: user._id },
             process.env.JWT_SECRET || 'secret',
             { expiresIn: '7d' }
+        );
+
+        // Record User Login in DailyUserReport
+        const now = new Date();
+        const dateStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+        await DailyUserReport.findOneAndUpdate(
+            { userId: user._id, date: dateStr },
+            {
+                $setOnInsert: { telegramId },
+                $push: { logins: { isBot: false, timestamp: now } }
+            },
+            { new: true, upsert: true }
         );
 
         res.json({

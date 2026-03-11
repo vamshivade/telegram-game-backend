@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getProfile, claimDailyBonus, claimAdReward, getAllUsersForBot } = require('../controllers/userController');
+const { getProfile, claimDailyBonus, claimAdReward, getAllUsersForBot, recordBotLogin } = require('../controllers/userController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // @route   GET api/user/profile
@@ -18,5 +18,9 @@ router.post('/ad-reward', authMiddleware, claimAdReward);
 // @route   GET api/user/all-users
 // @desc    Admin only: Get all users with tokens for bot automation
 router.get('/all-users', authMiddleware, getAllUsersForBot);
+
+// @route   POST api/user/record-login
+// @desc    Track a bot login event
+router.post('/record-login', authMiddleware, recordBotLogin);
 
 module.exports = router;

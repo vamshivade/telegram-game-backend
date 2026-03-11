@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const DailyUserReport = require('../models/DailyUserReport');
 
 const getProfile = async (req, res) => {
     try {
@@ -69,27 +70,54 @@ const claimAdReward = async (req, res) => {
             const now = new Date();
             const dateStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
             
-            let todayStat = user.adStats.find(stat => stat.date === dateStr);
-            if (!todayStat) {
-                user.adStats.push({ date: dateStr, interstitial: 0, popup: 0, direct: 0 });
-                todayStat = user.adStats[user.adStats.length - 1]; // get reference to newly added item
-            }
-            
-            todayStat[adType] += 1;
+            await DailyUserReport.findOneAndUpdate(
+                { userId: user._id, date: dateStr },
+                {
+                    $setOnInsert: { telegramId: user.telegramId },
+                    $push: { adsWatched: { adType, rewardAmount, timestamp: now } },
+                    $inc: { [`adCounts.${adType}`]: 1 }
+                },
+                { new: true, upsert: true }
+            );
         }
-
-        await user.save();
 
         console.log(`[AdReward] User ${user.telegramId} earned ${rewardAmount} coins from ${adType || 'unknown'}`);
 
         res.json({
             message: `Ad reward claimed! +${rewardAmount} coins.`,
             balance: user.balance,
-            earned: rewardAmount,
-            adStats: user.adStats
+            earned: rewardAmount
         });
     } catch (err) {
         console.error('Ad reward error:', err.message);
+        res.status(500).send('Server error');
+    }
+};
+
+/**
+ * POST /user/record-login
+ * Used exclusively by the automated loop to push 'bot' logins to the user's daily report
+ */
+const recordBotLogin = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const now = new Date();
+        const dateStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+        
+        await DailyUserReport.findOneAndUpdate(
+            { userId: user._id, date: dateStr },
+            {
+                $setOnInsert: { telegramId: user.telegramId },
+                $push: { logins: { isBot: true, timestamp: now } }
+            },
+            { new: true, upsert: true }
+        );
+
+        res.json({ success: true, message: 'Bot login recorded' });
+    } catch (err) {
+        console.error('Record bot login error:', err.message);
         res.status(500).send('Server error');
     }
 };
@@ -124,5 +152,6 @@ module.exports = {
     getProfile,
     claimDailyBonus,
     claimAdReward,
-    getAllUsersForBot
+    getAllUsersForBot,
+    recordBotLogin
 };
