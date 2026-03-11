@@ -71,7 +71,8 @@ const telegramLogin = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 photoUrl: user.photoUrl,
-                balance: user.balance
+                balance: user.balance,
+                role: user.role
             }
         });
     } catch (err) {
