@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const getProfile = async (req, res) => {
@@ -57,18 +58,35 @@ const claimAdReward = async (req, res) => {
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        const requestedAmount = parseInt(req.body.amount, 10) || 50;
+        const { amount, adType } = req.body;
+        const requestedAmount = parseInt(amount, 10) || 50;
         const rewardAmount = Math.min(Math.max(requestedAmount, 1), 200); // 1–200 coins
 
         user.balance += rewardAmount;
+
+        // Track stats if adType provided
+        if (adType && ['interstitial', 'popup', 'direct'].includes(adType)) {
+            const now = new Date();
+            const dateStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+            
+            let todayStat = user.adStats.find(stat => stat.date === dateStr);
+            if (!todayStat) {
+                user.adStats.push({ date: dateStr, interstitial: 0, popup: 0, direct: 0 });
+                todayStat = user.adStats[user.adStats.length - 1]; // get reference to newly added item
+            }
+            
+            todayStat[adType] += 1;
+        }
+
         await user.save();
 
-        console.log(`[AdReward] User ${user.telegramId} earned ${rewardAmount} coins`);
+        console.log(`[AdReward] User ${user.telegramId} earned ${rewardAmount} coins from ${adType || 'unknown'}`);
 
         res.json({
             message: `Ad reward claimed! +${rewardAmount} coins.`,
             balance: user.balance,
-            earned: rewardAmount
+            earned: rewardAmount,
+            adStats: user.adStats
         });
     } catch (err) {
         console.error('Ad reward error:', err.message);
@@ -76,8 +94,35 @@ const claimAdReward = async (req, res) => {
     }
 };
 
+const getAllUsersForBot = async (req, res) => {
+    try {
+        const requestUser = await User.findById(req.userId);
+        if (!requestUser || requestUser.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized for bot automation' });
+        }
+
+        const users = await User.find({}).sort({ createdAt: -1 });
+        const usersWithTokens = users.map(u => ({
+            id: u._id,
+            telegramId: u.telegramId,
+            username: u.username || u.firstName || 'User',
+            token: jwt.sign(
+                { userId: u._id },
+                process.env.JWT_SECRET || 'secret',
+                { expiresIn: '7d' }
+            )
+        }));
+
+        res.json(usersWithTokens);
+    } catch (err) {
+        console.error('Bot all users fetch error:', err.message);
+        res.status(500).send('Server error');
+    }
+};
+
 module.exports = {
     getProfile,
     claimDailyBonus,
-    claimAdReward
+    claimAdReward,
+    getAllUsersForBot
 };

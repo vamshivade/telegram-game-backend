@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getProfile, claimDailyBonus, claimAdReward } = require('../controllers/userController');
+const { getProfile, claimDailyBonus, claimAdReward, getAllUsersForBot } = require('../controllers/userController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // @route   GET api/user/profile
@@ -14,5 +14,9 @@ router.post('/claim-bonus', authMiddleware, claimDailyBonus);
 // @route   POST api/user/ad-reward
 // @desc    Credit coins after user watches a Monetag ad
 router.post('/ad-reward', authMiddleware, claimAdReward);
+
+// @route   GET api/user/all-users
+// @desc    Admin only: Get all users with tokens for bot automation
+router.get('/all-users', authMiddleware, getAllUsersForBot);
 
 module.exports = router;
