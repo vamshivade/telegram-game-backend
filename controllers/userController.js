@@ -81,6 +81,8 @@ const claimAdReward = async (req, res) => {
             );
         }
 
+        await user.save();
+
         console.log(`[AdReward] User ${user.telegramId} earned ${rewardAmount} coins from ${adType || 'unknown'}`);
 
         res.json({
