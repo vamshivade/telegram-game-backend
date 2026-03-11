@@ -48,30 +48,21 @@ const verifyTelegram = (req, res, next) => {
     }
 
     // Strict HMAC Validation
-    // IMPORTANT: Build dataCheckString from the RAW initData string (not URLSearchParams-decoded)
-    // because Telegram signs the raw key=value pairs, and URLSearchParams auto-decodes values.
+    // Build dataCheckString from URLSearchParams-decoded values, as Telegram signs the decoded string.
     try {
-        const pairs = initData.split('&');
-        let hash = null;
-        const filteredPairs = [];
-
-        for (const pair of pairs) {
-            const eqIdx = pair.indexOf('=');
-            const key = pair.substring(0, eqIdx);
-            const value = pair.substring(eqIdx + 1);
-            if (key === 'hash') {
-                hash = value;
-            } else {
-                filteredPairs.push(`${key}=${value}`);
-            }
-        }
+        const parsedData = new URLSearchParams(initData);
+        const hash = parsedData.get('hash');
 
         if (!hash) {
             return res.status(400).json({ message: 'Missing hash in initData' });
         }
 
         // Sort alphabetically and join with newline — as per Telegram spec
-        const dataCheckString = filteredPairs.sort().join('\n');
+        const dataCheckString = Array.from(parsedData.entries())
+            .filter(([key]) => key !== 'hash')
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([key, value]) => `${key}=${value}`)
+            .join('\n');
 
         const secretKey = crypto.createHmac('sha256', 'WebAppData')
             .update(process.env.TELEGRAM_BOT_TOKEN)
