@@ -8,16 +8,7 @@ const DailyUserReportSchema = new mongoose.Schema({
         timestamp: { type: Date, default: Date.now },
         isBot: { type: Boolean, default: false }
     }],
-    adsWatched: [{
-        adType: { type: String },
-        rewardAmount: { type: Number },
-        timestamp: { type: Date, default: Date.now }
-    }],
-    adCounts: {
-        interstitial: { type: Number, default: 0 },
-        popup: { type: Number, default: 0 },
-        direct: { type: Number, default: 0 }
-    }
+
 }, { timestamps: true });
 
 // Compound index to ensure 1 document per user per day

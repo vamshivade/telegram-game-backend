@@ -65,28 +65,6 @@ const claimAdReward = async (req, res) => {
 
         user.balance += rewardAmount;
 
-        // Track stats if adType provided
-        if (adType && ['interstitial', 'popup', 'direct'].includes(adType)) {
-            const now = new Date();
-            const dateStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
-            
-            console.log(`[AdReward] Attempting to update report for ${user.telegramId} on ${dateStr}`);
-            try {
-                const report = await DailyUserReport.findOneAndUpdate(
-                    { userId: user._id, date: dateStr },
-                    {
-                        $setOnInsert: { telegramId: user.telegramId },
-                        $push: { adsWatched: { adType, rewardAmount, timestamp: now } },
-                        $inc: { [`adCounts.${adType}`]: 1 }
-                    },
-                    { new: true, upsert: true }
-                );
-                console.log(`[AdReward] Report updated/created for ${user.telegramId}. Report ID: ${report._id}`);
-            } catch (reportErr) {
-                console.error(`[AdReward] FAILED to update DailyUserReport for ${user.telegramId}:`, reportErr.message);
-            }
-        }
-
         await user.save();
 
         console.log(`[AdReward] User ${user.telegramId} earned ${rewardAmount} coins from ${adType || 'unknown'}`);

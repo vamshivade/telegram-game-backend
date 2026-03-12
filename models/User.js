@@ -39,12 +39,7 @@ const UserSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
-    adStats: [{
-        date: { type: String },
-        interstitial: { type: Number, default: 0 },
-        popup: { type: Number, default: 0 },
-        direct: { type: Number, default: 0 }
-    }],
+
     createdAt: {
         type: Date,
         default: Date.now
