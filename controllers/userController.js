@@ -59,7 +59,7 @@ const claimAdReward = async (req, res) => {
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        const { amount, adType } = req.body;
+        const { amount } = req.body;
         const requestedAmount = parseInt(amount, 10) || 50;
         const rewardAmount = Math.min(Math.max(requestedAmount, 1), 200); // 1–200 coins
 
@@ -67,7 +67,7 @@ const claimAdReward = async (req, res) => {
 
         await user.save();
 
-        console.log(`[AdReward] User ${user.telegramId} earned ${rewardAmount} coins from ${adType || 'unknown'}`);
+        console.log(`[AdReward] User ${user.telegramId} earned ${rewardAmount} coins`);
 
         res.json({
             message: `Ad reward claimed! +${rewardAmount} coins.`,
